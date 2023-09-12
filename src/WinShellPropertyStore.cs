@@ -52,7 +52,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using Interop;
 
 namespace WinShell
 {
@@ -93,15 +92,16 @@ namespace WinShell
             return new PropertyStore(store);
         }
 
-        private PropertyStoreInterop.IPropertyStore m_IPropertyStore;
-        private PropertyStoreInterop.IPropertyStoreCapabilities m_IPropertyStoreCapabilities;
+        private PropertyStoreInterop.IPropertyStore? m_propertyStore;
+        private PropertyStoreInterop.IPropertyStore Impl => m_propertyStore ?? throw new ObjectDisposedException(nameof(PropertyStore));
+        private PropertyStoreInterop.IPropertyStoreCapabilities? m_IPropertyStoreCapabilities;
 #if !RAW_PROPERTY_STORE
-        private string m_contentType;
+        private readonly string? m_contentType;
 #endif
 
         private PropertyStore(PropertyStoreInterop.IPropertyStore propertyStore)
         {
-            m_IPropertyStore = propertyStore;
+            m_propertyStore = propertyStore;
 #if !RAW_PROPERTY_STORE
             m_contentType = GetValue(s_pkContentType) as string;
 #endif
@@ -115,7 +115,7 @@ namespace WinShell
             get
             {
                 uint value;
-                m_IPropertyStore.GetCount(out value);
+                Impl.GetCount(out value);
                 return (int)value;
             }
         }
@@ -133,7 +133,7 @@ namespace WinShell
         public PropertyKey GetAt(int index)
         {
             PropertyKey key;
-            m_IPropertyStore.GetAt((uint)index, out key);
+            Impl.GetAt((uint)index, out key);
             return key;
         }
 
@@ -142,14 +142,14 @@ namespace WinShell
         /// </summary>
         /// <param name="key">The <see cref="PropertyKey"/> of the property to be retrieved.</param>
         /// <returns>The data for the specified property or null if the item does not have the property.</returns>
-        public object GetValue(PropertyKey key)
+        public object? GetValue(PropertyKey key)
         {
             IntPtr pv = IntPtr.Zero;
-            object value = null;
+            object? value = null;
             try
             {
                 pv = Marshal.AllocCoTaskMem(32); // Structure is 16 bytes in 32-bit windows and 24 bytes in 64-bit but we leave a few more bytes for good measure.
-                m_IPropertyStore.GetValue(key, pv);
+                Impl.GetValue(key, pv);
                 value = PropVariant.GetObjectFromPropVariant(pv);
 
 #if !RAW_PROPERTY_STORE
@@ -224,7 +224,7 @@ namespace WinShell
 
                 pv = Marshal.AllocCoTaskMem(PropVariant.sizeofPROPVARIANT);
                 PropVariant.GetPropVariantFromObject(value, pv);
-                m_IPropertyStore.SetValue(key, pv);
+                Impl.SetValue(key, pv);
             }
             finally
             {
@@ -241,7 +241,7 @@ namespace WinShell
         {
             if (m_IPropertyStoreCapabilities == null)
             {
-                m_IPropertyStoreCapabilities = (PropertyStoreInterop.IPropertyStoreCapabilities)m_IPropertyStore;
+                m_IPropertyStoreCapabilities = (PropertyStoreInterop.IPropertyStoreCapabilities)Impl;
             }
 
             Int32 hResult = m_IPropertyStoreCapabilities.IsPropertyWritable(ref key);
@@ -256,7 +256,7 @@ namespace WinShell
         /// </summary>
         public void Commit()
         {
-            m_IPropertyStore.Commit();
+            Impl.Commit();
         }
 
         /// <summary>
@@ -274,15 +274,15 @@ namespace WinShell
 
         private void Dispose(bool disposing)
         {
-            if (m_IPropertyStore != null)
+            if (m_propertyStore != null)
             {
                 if (!disposing)
                 {
                     Debug.Fail("Failed to dispose PropertyStore");
                 }
 
-                Marshal.FinalReleaseComObject(m_IPropertyStore);
-                m_IPropertyStore = null;
+                Marshal.FinalReleaseComObject(m_propertyStore);
+                m_propertyStore = null;
             }
 
             if (m_IPropertyStoreCapabilities != null)
@@ -306,7 +306,8 @@ namespace WinShell
     /// </summary>
     public class PropertySystem : IDisposable
     {
-        PropertyStoreInterop.IPropertySystem m_IPropertySystem;
+        PropertyStoreInterop.IPropertySystem? m_propertySystem;
+        PropertyStoreInterop.IPropertySystem Impl => m_propertySystem ?? throw new ObjectDisposedException(nameof(PropertySystem));
 
         /// <summary>
         /// Constructs an instance of the PropertySytem object. PropertySystem has no
@@ -320,7 +321,7 @@ namespace WinShell
         public PropertySystem()
         {
             Guid IID_IPropertySystem = typeof(PropertyStoreInterop.IPropertySystem).GUID;
-            PropertyStoreInterop.PSGetPropertySystem(ref IID_IPropertySystem, out m_IPropertySystem);
+            PropertyStoreInterop.PSGetPropertySystem(ref IID_IPropertySystem, out m_propertySystem);
         }
 
         /// <summary>
@@ -328,14 +329,14 @@ namespace WinShell
         /// </summary>
         /// <param name="propKey">The <see cref="PropertyKey"/> for which the description is to be retrieved.</param>
         /// <returns>A <see cref="PropertyDescription"/>. Null if the PROPERTYKEY does not have a registered description.</returns>
-        public PropertyDescription GetPropertyDescription(PropertyKey propKey)
+        public PropertyDescription? GetPropertyDescription(PropertyKey propKey)
         {
             Int32 hResult;
             Guid IID_IPropertyDescription = typeof(PropertyStoreInterop.IPropertyDescription).GUID;
-            PropertyStoreInterop.IPropertyDescription iPropertyDescription = null;
+            PropertyStoreInterop.IPropertyDescription? iPropertyDescription = null;
             try
             {
-                hResult = m_IPropertySystem.GetPropertyDescription(propKey, ref IID_IPropertyDescription, out iPropertyDescription);
+                hResult = Impl.GetPropertyDescription(propKey, ref IID_IPropertyDescription, out iPropertyDescription);
                 if (hResult < 0) return null;
                 return new PropertyDescription(iPropertyDescription);
             }
@@ -360,14 +361,14 @@ namespace WinShell
         /// <para>Canonical names for properties defined by Windows are listed at
         /// <see cref="https://msdn.microsoft.com/en-us/library/windows/desktop/dd561977(v=vs.85).aspx"/></para>
         /// </remarks>
-        public PropertyDescription GetPropertyDescriptionByName(string canonicalName)
+        public PropertyDescription? GetPropertyDescriptionByName(string canonicalName)
         {
             Int32 hResult;
             Guid IID_IPropertyDescription = typeof(PropertyStoreInterop.IPropertyDescription).GUID;
-            PropertyStoreInterop.IPropertyDescription iPropertyDescription = null;
+            PropertyStoreInterop.IPropertyDescription? iPropertyDescription = null;
             try
             {
-                hResult = m_IPropertySystem.GetPropertyDescriptionByName(canonicalName, ref IID_IPropertyDescription, out iPropertyDescription);
+                hResult = Impl.GetPropertyDescriptionByName(canonicalName, ref IID_IPropertyDescription, out iPropertyDescription);
                 if (hResult < 0)
                 {
                     return null;
@@ -390,10 +391,10 @@ namespace WinShell
             PropertyKey propertyKey;    // Initializes automatically to all zeros
 
             Guid IID_IPropertyDescription = typeof(PropertyStoreInterop.IPropertyDescription).GUID;
-            PropertyStoreInterop.IPropertyDescription iPropertyDescription = null;
+            PropertyStoreInterop.IPropertyDescription? iPropertyDescription = null;
             try
             {
-                hResult = m_IPropertySystem.GetPropertyDescriptionByName(canonicalName, ref IID_IPropertyDescription, out iPropertyDescription);
+                hResult = Impl.GetPropertyDescriptionByName(canonicalName, ref IID_IPropertyDescription, out iPropertyDescription);
                 if (hResult < 0)
                 {
                     Marshal.ThrowExceptionForHR(hResult);
@@ -428,15 +429,15 @@ namespace WinShell
 
         private void Dispose(bool disposing)
         {
-            if (m_IPropertySystem != null)
+            if (m_propertySystem != null)
             {
                 if (!disposing)
                 {
                     Debug.Fail("Failed to dispose PropertySystem");
                 }
 
-                Marshal.FinalReleaseComObject(m_IPropertySystem);
-                m_IPropertySystem = null;
+                Marshal.FinalReleaseComObject(m_propertySystem);
+                m_propertySystem = null;
             }
             if (disposing)
             {
@@ -463,17 +464,17 @@ namespace WinShell
     public class PropertyDescription
     {
         PropertyKey m_propertyKey;
-        string m_canonicalName;
-        string m_displayName;
-        PROPDESC_TYPE_FLAGS m_typeFlags;
-        PROPDESC_VIEW_FLAGS m_viewFlags;
-        PROPDESC_DISPLAYTYPE m_displayType;
-        ushort m_vt; // Variant type from which the managed type is derived.
+        readonly string? m_canonicalName;
+        readonly string? m_displayName;
+        readonly PROPDESC_TYPE_FLAGS m_typeFlags;
+        readonly PROPDESC_VIEW_FLAGS m_viewFlags;
+        readonly PROPDESC_DISPLAYTYPE m_displayType;
+        readonly ushort m_vt; // Variant type from which the managed type is derived.
 
 #if !RAW_PROPERTY_STORE
         // These properties should be marked as innate or read-only but, at least in Windows 10,
         // they are not. If not RAW_PROPERTY_STORE compile-time option then we modify them.
-        static HashSet<PropertyKey> s_ForceInnate = new HashSet<PropertyKey>(
+        static readonly HashSet<PropertyKey> s_ForceInnate = new HashSet<PropertyKey>(
             new PropertyKey[]
             {
                 new PropertyKey("D5CDD502-2E9C-101B-9397-08002B2CF9AE", 26), // System.ContentType
@@ -603,7 +604,7 @@ namespace WinShell
         /// <remarks>
         /// A typical canonical name is "System.Image.HorizontalSize"
         /// </remarks>
-        public string CanonicalName
+        public string? CanonicalName
         {
             get { return m_canonicalName; }
         }
@@ -616,7 +617,7 @@ namespace WinShell
         /// <para>Not all properties have display names. If a display name is not assigned, the value will be null.
         /// </para>
         /// </remarks>
-        public string DisplayName
+        public string? DisplayName
         {
             get { return m_displayName; }
         }
@@ -649,7 +650,7 @@ namespace WinShell
         /// <remarks>
         /// Value is null if the property value type is not supported by the managed wrapper
         /// </remarks>
-        public Type ValueType
+        public Type? ValueType
         {
             get
             {
@@ -662,13 +663,13 @@ namespace WinShell
         /// </summary>
         public PROPDESC_DISPLAYTYPE DisplayType => m_displayType;
 
-        public bool Equals(PropertyDescription pd)
+        public bool Equals(PropertyDescription? pd)
         {
             if (pd == null) return false;
             return m_propertyKey.Equals(pd.m_propertyKey);
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return Equals(obj as PropertyDescription);
         }
@@ -678,7 +679,7 @@ namespace WinShell
             return m_propertyKey.GetHashCode();
         }
 
-        public override string ToString()
+        public override string? ToString()
         {
             return m_canonicalName;
         }

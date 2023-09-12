@@ -40,7 +40,7 @@ For more information, please refer to <http://unlicense.org/>
 using System;
 using System.Runtime.InteropServices;
 
-namespace Interop
+namespace WinShell
 {
 
     /// <summary>
@@ -91,7 +91,7 @@ namespace Interop
             return PropSetId.Equals(pk.PropSetId) && PropertyId == pk.PropertyId;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj is PropertyKey)
             {

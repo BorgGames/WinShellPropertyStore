@@ -11,7 +11,6 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using WinShell;
-using Interop;
 
 namespace Tests
 {
@@ -41,11 +40,11 @@ namespace Tests
     {
         static PropertyKey s_pkDateTaken = new PropertyKey("14B81DA1-0135-4D31-96D9-6CBFC9671A99", 36867);
 
-        const string c_SampleJpg = "sample.jpg";
+        const string c_sampleJpg = "sample.jpg";
         const string c_sourceMp3 = "src.mp3";
         const string c_sourceJpg = "src.jpg";
         const string c_sourceMp4 = "src.mp4";
-        string m_workingDirectory;
+        readonly string m_workingDirectory;
 
         public TestPropertyStore()
         {
@@ -53,12 +52,12 @@ namespace Tests
             // It should be the current directory or a parent thereof.
 
             string workingDirectory = Environment.CurrentDirectory;
-            while (!File.Exists(Path.Combine(workingDirectory, c_SampleJpg)))
+            while (!File.Exists(Path.Combine(workingDirectory, c_sampleJpg)))
             {
                 workingDirectory = Path.GetDirectoryName(workingDirectory);
                 if (string.IsNullOrEmpty(workingDirectory))
                 {
-                    throw new ApplicationException(string.Format("Test file, '{0}', not found in working directory path.", c_SampleJpg));
+                    throw new ApplicationException(string.Format("Test file, '{0}', not found in working directory path.", c_sampleJpg));
                 }
                 m_workingDirectory = workingDirectory;
             }
@@ -118,8 +117,7 @@ namespace Tests
             // Read date from image that has a date
             using (var ps = PropertyStore.Open(Path.Combine(m_workingDirectory, c_sourceJpg)))
             {
-                object value = ps.GetValue(s_pkDateTaken);
-                if (!(value is DateTime))
+                if (ps.GetValue(s_pkDateTaken) is not DateTime)
                 {
                     throw new ApplicationException("Failed to read date from JPEG.");
                 }
@@ -128,8 +126,7 @@ namespace Tests
             // Attempt to read date from mp3 that does not have one.
             using (var ps = PropertyStore.Open(Path.Combine(m_workingDirectory, c_sourceMp3)))
             {
-                object value = ps.GetValue(s_pkDateTaken);
-                if (value != null)
+                if (ps.GetValue(s_pkDateTaken) != null)
                 {
                     throw new ApplicationException("Date read succeeded when it should have returned null.");
                 }
@@ -159,6 +156,9 @@ namespace Tests
 
                         // Get the description from the property store (if available)
                         var desc = propSys.GetPropertyDescription(propKey);
+                        
+                        if (desc?.CanonicalName is null || !desc.CanonicalName.Contains("Status"))
+                            continue;
 
                         // Get the value
                         object value = null;
@@ -202,11 +202,11 @@ namespace Tests
 
         } // DumpAllProperties
 
-        private static string ValueToString(object value)
+        private static string ValueToString(object? value)
         {
             if (value == null) return "(null)";
 
-            Array arr = value as Array;
+            Array? arr = value as Array;
             if (arr != null)
             {
                 StringBuilder builder = new StringBuilder();
@@ -269,7 +269,7 @@ namespace Tests
                                 Console.WriteLine("Copying property '{0}' ({1}).", desc.CanonicalName, desc.TypeFlags);
 
                                 // Read the value
-                                object value = srcPs.GetValue(propKey);
+                                object? value = srcPs.GetValue(propKey);
 
                                 // Write the value
                                 try
@@ -324,8 +324,8 @@ namespace Tests
                                 && (desc.TypeFlags & PROPDESC_TYPE_FLAGS.PDTF_ISINNATE) == 0
                                 && dstPs.IsPropertyWriteable(propKey))
                             {
-                                object value1 = srcPs.GetValue(propKey);
-                                object value2 = dstPs.GetValue(propKey);
+                                object? value1 = srcPs.GetValue(propKey);
+                                object? value2 = dstPs.GetValue(propKey);
 
                                 if (!AreObjectsEqual(value1, value2))
                                 {
@@ -348,7 +348,7 @@ namespace Tests
             Console.WriteLine("    File Property Comparison Succeeded.");
         }
 
-        private static bool AreObjectsEqual(object a, object b)
+        private static bool AreObjectsEqual(object? a, object? b)
         {
             if ((a == null) != (b == null))
             {
@@ -359,8 +359,8 @@ namespace Tests
                 return true;
             }
 
-            Array aa = a as Array;
-            Array ab = b as Array;
+            Array? aa = a as Array;
+            Array? ab = b as Array;
             if ((aa == null) != (ab == null))
             {
                 return false;
@@ -408,11 +408,11 @@ namespace Tests
 
         #region Span Drive
 
-        PropertySystem m_ps = null;
-        TextWriter m_log = null;
-        HashSet<PropertyKey> m_foundKeys = null;
-        HashSet<PropertyKey> m_errorKeys = null;
-        HashSet<PropertyKey> m_typematchKeys = null;
+        PropertySystem? m_ps = null;
+        TextWriter? m_log = null;
+        HashSet<PropertyKey>? m_foundKeys = null;
+        HashSet<PropertyKey>? m_errorKeys = null;
+        HashSet<PropertyKey>? m_typematchKeys = null;
 
         void RetrieveAll()
         {
@@ -484,7 +484,7 @@ namespace Tests
                                     continue;
                                 }
 
-                                object value = null;
+                                object? value = null;
                                 try
                                 {
                                     // Get the value
@@ -514,7 +514,7 @@ namespace Tests
 
                                 if (m_foundKeys.Add(propKey))
                                 {
-                                    PropertyDescription desc = null;
+                                    PropertyDescription? desc = null;
                                     try
                                     {
                                         // Get the description from the property store (if available)
@@ -559,7 +559,7 @@ namespace Tests
                                     {
                                         // See if type matches
                                         Type expectedType = desc.ValueType;
-                                        Type valueType = (value != null) ? value.GetType() : null;
+                                        Type? valueType = (value != null) ? value.GetType() : null;
 
                                         if (expectedType == null)
                                         {

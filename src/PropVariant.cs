@@ -46,7 +46,7 @@ using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
-namespace Interop
+namespace WinShell
 {
 
     internal static class PropVariant
@@ -150,11 +150,10 @@ namespace Interop
             }
         }
 
-        public static object GetObjectFromPropVariant(IntPtr pv)
+        public static object? GetObjectFromPropVariant(IntPtr pv)
         {
             var vt = (VT)Marshal.ReadInt16(pv);
 
-            object value = null;
             switch (vt)
             {
                 case VT.EMPTY:
@@ -179,33 +178,27 @@ namespace Interop
                 case VT.UINT:
                 case VT.VOID:
                 case VT.HRESULT:
-                    value = Marshal.GetObjectForNativeVariant(pv);
-                    break;
+                    return Marshal.GetObjectForNativeVariant(pv);
 
                 case VT.LPSTR:
-                    value = Marshal.PtrToStringAnsi(Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_data));
-                    break;
+                    return Marshal.PtrToStringAnsi(Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_data));
 
                 case VT.LPWSTR:
-                    value = Marshal.PtrToStringUni(Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_data));
-                    break;
+                    return Marshal.PtrToStringUni(Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_data));
 
                 case VT.FILETIME:
-                    value = DateTime.FromFileTimeUtc(Marshal.ReadInt64(pv, offsetofPROPVARIANT_data));
-                    break;
+                    return DateTime.FromFileTimeUtc(Marshal.ReadInt64(pv, offsetofPROPVARIANT_data));
 
                 case VT.CLSID:
-                    value = Marshal.PtrToStructure<Guid>(Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_data));
-                    break;
+                    return Marshal.PtrToStructure<Guid>(Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_data));
 
                 case VT.VECTOR|VT.I2:
                     {
                         int cElems = (int)Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_cElems);
                         Int16[] a = new Int16[cElems];
                         Marshal.Copy(Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_pElems), a, 0, cElems);
-                        value = a;
+                        return a;
                     }
-                    break;
 
                 case VT.VECTOR|VT.I4:
                 case VT.VECTOR|VT.INT:
@@ -213,18 +206,16 @@ namespace Interop
                         int cElems = (int)Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_cElems);
                         Int32[] a = new Int32[cElems];
                         Marshal.Copy(Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_pElems), a, 0, cElems);
-                        value = a;
+                        return a;
                     }
-                    break;
 
                 case VT.VECTOR|VT.R4:
                     {
                         int cElems = (int)Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_cElems);
                         float[] a = new float[cElems];
                         Marshal.Copy(Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_pElems), a, 0, cElems);
-                        value = a;
+                        return a;
                     }
-                    break;
 
                 case VT.VECTOR|VT.I1:
                     {
@@ -233,17 +224,16 @@ namespace Interop
                         Marshal.Copy(Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_pElems), a, 0, cElems);
                         SByte[] b = new SByte[cElems];
                         Buffer.BlockCopy(a, 0, b, 0, cElems);
-                        value = b;
+                        return b;
                     }
-                    break;
 
                 case VT.VECTOR|VT.UI1:
                     {
                         int cElems = (int)Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_cElems);
                         byte[] a = new byte[cElems];
                         Marshal.Copy(Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_pElems), a, 0, cElems);
+                        return a;
                     }
-                    break;
 
                 case VT.VECTOR|VT.UI2:
                     {
@@ -252,9 +242,8 @@ namespace Interop
                         Marshal.Copy(Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_pElems), a, 0, cElems);
                         UInt16[] b = new UInt16[cElems];
                         Buffer.BlockCopy(a, 0, b, 0, cElems * 2);
-                        value = b;
+                        return b;
                     }
-                    break;
 
                 case VT.VECTOR|VT.UI4:
                 case VT.VECTOR|VT.UINT:
@@ -264,18 +253,16 @@ namespace Interop
                         Marshal.Copy(Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_pElems), a, 0, cElems);
                         UInt32[] b = new UInt32[cElems];
                         Buffer.BlockCopy(a, 0, b, 0, (int)cElems * 4);
-                        value = b;
+                        return b;
                     }
-                    break;
 
                 case VT.VECTOR|VT.I8:
                     {
                         int cElems = (int)Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_cElems);
                         Int64[] a = new Int64[cElems];
                         Marshal.Copy(Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_pElems), a, 0, cElems);
-                        value = a;
+                        return a;
                     }
-                    break;
 
                 case VT.VECTOR|VT.UI8:
                     {
@@ -284,53 +271,48 @@ namespace Interop
                         Marshal.Copy(Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_pElems), a, 0, cElems);
                         UInt64[] b = new UInt64[cElems];
                         Buffer.BlockCopy(a, 0, b, 0, cElems * 8);
-                        value = b;
+                        return b;
                     }
-                    break;
 
                 case VT.VECTOR|VT.R8:
                     {
                         int cElems = (int)Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_cElems);
                         double[] a = new double[cElems];
                         Marshal.Copy(Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_pElems), a, 0, cElems);
-                        value = a;
+                        return a;
                     }
-                    break;
 
                 case VT.VECTOR|VT.LPSTR:
                     {
                         int cElems = (int)Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_cElems);
                         IntPtr pElems = Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_pElems);
-                        string[] strings = new string[cElems];
+                        string?[] strings = new string?[cElems];
                         for (int i = 0; i < cElems; ++i)
                         {
                             strings[i] = Marshal.PtrToStringAnsi(Marshal.ReadIntPtr(pElems, i * IntPtr.Size));
                         }
-                        value = strings;
+                        return strings;
                     }
-                    break;
 
                 case VT.VECTOR|VT.LPWSTR:
                     {
                         int cElems = (int)Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_cElems);
                         IntPtr pElems = Marshal.ReadIntPtr(pv, offsetofPROPVARIANT_pElems);
-                        string[] strings = new string[cElems];
+                        string?[] strings = new string?[cElems];
                         for (int i = 0; i < cElems; ++i)
                         {
                             strings[i] = Marshal.PtrToStringUni(Marshal.ReadIntPtr(pElems, i * IntPtr.Size));
                         }
-                        value = strings;
+                        return strings;
                     }
-                    break;
 
                 default:
 #if DEBUG
                     // Attempt conversion and report if it works
                     try
                     {
-                        value = Marshal.GetObjectForNativeVariant(pv);
-                        if (value == null) value = "(null)";
-                        value = String.Format("(Supported type 0x{0:x4}): {1}", vt, value.ToString());
+                        object value = Marshal.GetObjectForNativeVariant(pv) ?? "(null)";
+                        return String.Format("(Supported type 0x{0:x4}): {1}", vt, value.ToString());
                     }
                     catch
                     {
@@ -342,8 +324,6 @@ namespace Interop
                     throw new NotImplementedException(string.Format($"Conversion of PROPVARIANT type VT_{vt} is not yet supported."));
 #endif
             }
-
-            return value;
         } // Method PropVariantToObject
 
         /// <summary>
@@ -360,7 +340,7 @@ namespace Interop
         /// <para>Unsupported VT values result in a null return.
         /// </para>
         /// </remarks>
-        public static Type GetManagedTypeFromVariantType(VT vt)
+        public static Type? GetManagedTypeFromVariantType(VT vt)
         {
             switch (vt)
             {
