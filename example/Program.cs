@@ -24,7 +24,7 @@ namespace Tests
                 Console.OutputEncoding = Encoding.UTF8;
 
                 var test = new TestPropertyStore();
-                test.PerformTests();
+                test.PerformTests(args);
             }
             catch (Exception err)
             {
@@ -34,8 +34,6 @@ namespace Tests
                 Console.WriteLine(err.Message);
 #endif
             }
-
-            Win32Interop.ConsoleHelper.PromptAndWaitIfSoleConsole();
         }
     }
 
@@ -68,12 +66,20 @@ namespace Tests
 
         static PropertyKey s_pkKeywords = new PropertyKey("F29F85E0-4FF9-1068-AB91-08002B27B3D9", 5); // System.Keywords
 
-        public void PerformTests()
+        public void PerformTests(string[] files)
         {
             Console.WriteLine($"Testing in {IntPtr.Size*8} bit configuration.");
 
             Console.WriteLine("Working directory: " + m_workingDirectory);
             Console.WriteLine();
+
+            foreach (string path in files) {
+                DumpAllProperties(path);
+                Console.WriteLine();
+            }
+
+            if (files.Length > 0)
+                return;
 
             DumpAllProperties(Path.Combine(m_workingDirectory, c_sourceMp3));
             Console.WriteLine();
@@ -191,7 +197,7 @@ namespace Tests
             // Dump the list
             foreach(var pair in propList)
             {
-                Console.WriteLine("{0}: {1}", pair.Key, pair.Value);
+                Console.WriteLine("{0}:\t{1}", pair.Key, pair.Value);
             }
 
         } // DumpAllProperties

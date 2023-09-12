@@ -67,7 +67,7 @@ namespace WinShell
     /// with this class. If properties are written, be sure to call "commit"
     /// before the instance is disposed.
     /// </remarks>
-    class PropertyStore : IDisposable
+    public sealed class PropertyStore : IDisposable
     {
 
 #if !RAW_PROPERTY_STORE
